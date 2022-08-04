@@ -1,9 +1,15 @@
 // Ch1AlgorithmsChallenge.cpp : This file contains the 'main' function. Program execution begins and ends there.
+// built following c++ tutorial from https://www.redblobgames.com/pathfinding/a-star/implementation.html
 #include <iostream>
 #include <chrono>
 #include "Edge.h"
 #include "Node.h"
 #include <list>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <queue>
+#include <unordered_set>
 
 constexpr int RUN_SIZE = 100;
 constexpr int ARRAY_SIZE = 100;
@@ -16,9 +22,31 @@ int ChooseASearchKey(int ArrayToPickFrom[], int SizeOfArray);
 void BubbleSort(int ArrayToFill[], int SizeOfArray);
 void BinarySearch(int ArrayToSearch[], int Low, int Hight, int SearchKey);
 
-void AStar(Node* start, Node* end);
+unordered_map<char, char> BFS(char start, char goal, map<char, list<char>> graph);
+void AStar(char start, char goal, map<char, list<char>> graph);
 
 uint32_t GetNanos();
+
+template<typename T, typename priority_t>
+struct PriorityQueue {
+    typedef std::pair<priority_t, T> PQElement;
+    std::priority_queue<PQElement, std::vector<PQElement>,
+        std::greater<PQElement>> elements;
+
+    bool empty() const {
+        return elements.empty();
+    }
+
+    void put(T item, priority_t priority) {
+        elements.emplace(priority, item);
+    }
+
+    T get() {
+        T best_item = elements.top().second;
+        elements.pop();
+        return best_item;
+    }
+};
 
 int main()
 {
@@ -51,23 +79,19 @@ int main()
     //BinarySearch(Dataset, 0, ARRAY_SIZE, SearchKey); --> never ending loop?
 
     //Challenge 2
-    list<Edge> graph;
-    Node nodeA('a');
-    Node nodeB('b');
-    Node nodeC('c');
-    Node nodeD('c');
 
-    Edge edgeAB(nodeA, nodeB, 5);
-    Edge edgeBC(nodeB, nodeC, 1);
-    Edge edgeAD(nodeA, nodeD, 7);
-    Edge edgeCD(nodeC, nodeD, 1);
+    std::map<char, list<char>> graph = {{
+        {'a', {'b', 'd'}},
+        {'b', {'a', 'c'}},
+        {'c', {'b', 'd'}},
+        {'d', {'a', 'c'}}
+    }}; //to get neighbors, do graph[char]
 
-    graph.push_back(edgeAB);
-    graph.push_back(edgeBC);
-    graph.push_back(edgeAD);
-    graph.push_back(edgeCD);
+    unordered_map<char, char> result = BFS('a', 'd', graph);
+    cout <<  result['a'] << endl;
+    //AStar('a', 'd', graph, came_from, cost_so_far);
 
-
+    AStar('a', 'd', graph);
 
 }
 
@@ -130,34 +154,96 @@ uint32_t GetNanos()
     return static_cast<uint32_t>(duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count());
 }
 
-void AStar(Node* start, Node* end)
+/*void AStar(Node* start, Node* goal, list<Edge> graph)
 {
 
-    list<int> queue;
-    queue.push_back(source);
+    priority_queue<Node, double> frontier;
+    frontier.push(start, 0);
 
-    std::map<int, int> came_from;
-    came_from[source] = NULL;
+    came_from[start] = start;
+    cost_so_far[start] = 0;
+
+    while (!frontier.empty()) {
+        Location current = frontier.get();
+
+        if (current == goal) {
+            break;
+        }
+
+        for (Location next : graph.neighbors(current)) {
+            double new_cost = cost_so_far[current] + graph.cost(current, next);
+            if (cost_so_far.find(next) == cost_so_far.end()
+                || new_cost < cost_so_far[next]) {
+                cost_so_far[next] = new_cost;
+                double priority = new_cost + 0; //normally, 0 would be the heuristic
+                frontier.put(next, priority);
+                came_from[next] = current;
+            }
+        }
+    }
+}*/
+
+unordered_map<char, char> BFS(char start, char goal, map<char, list<char>> graph)
+{
+    queue<char> queue;
+    queue.push(start);
+
+    //unordered_set<char> reached;
+    //reached.insert(start);
+
+    unordered_map<char, char> cameFrom;
+    cameFrom[start] = start;
 
     while (!queue.empty())
     {
-        int current = queue.front();
-        std::cout << current << " ";
-        queue.pop_front();
+        char current = queue.front();
+        queue.pop();
 
         if (current == goal)
         {
             break;
         }
 
-        //get all adjacent vertices of queued
-        //if adjacent has not been visited, mark visited and enqueue
-        for (int adj : m_adjacentNodes[current])
+        for (char next : graph[current])
         {
-            if (came_from[adj] == NULL)
+            if (cameFrom.find(next) == cameFrom.end())
             {
-                queue.push_back(adj);
-                came_from[adj] = current;
+                queue.push(next);
+                cameFrom[next] = current;
+            }
+        }
+    }
+    return cameFrom;
+}
+
+void AStar(char start, char goal, map<char, list<char>> graph)
+{
+    PriorityQueue<char, double> queue;
+    queue.put(start, 0);
+
+    unordered_map<char, char> cameFrom;
+    cameFrom[start] = start;
+
+    unordered_map<char, double> totalCost;
+    totalCost[start] = 0;
+
+    while (!queue.empty())
+    {
+        char current = queue.get();
+
+        if (current == goal)
+        {
+            break;
+        }
+
+        for (char next : graph[current])
+        {
+            double cost = totalCost[current] + 0; //0 would be the heuristic in A*
+            if ( (totalCost.find(next) == totalCost.end()) || cost < totalCost[next] )
+            {
+                totalCost[next] = cost;
+                cameFrom[next] = current;
+                queue.put(next, cost);
             }
         }
     }

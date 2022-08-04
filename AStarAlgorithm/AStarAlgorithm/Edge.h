@@ -7,7 +7,7 @@ class Edge
 	int m_cost;
 
 public:
-	Edge(Node nodeA, Node nodeB, int cost);
+	Edge(Node* nodeA, Node* nodeB, int cost);
 	~Edge();
 
 	int GetCost() { return m_cost; };
